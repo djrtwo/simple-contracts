@@ -1,4 +1,15 @@
 pragma solidity ^0.4.11;
+"""
+**** Currently UNTESTED ****
+
+# Escrow Contract #
+Involves three 'actors' -- 'sender', 'recipient', 'arbitrator'
+Holds Ether from 'sender' to be transferred to 'recipient'.
+Ether in contract is transferred to 'recipient' when two of the three 'actors' `confirm`.
+Contract can be `void`ed by 'sender' after `blocksUntilExpire` blocks have passed since contract creation.
+Ether is transferred to 'sender' upon successful `void`.
+
+"""
 
 contract Escrow {
     address[] public actors;
