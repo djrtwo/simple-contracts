@@ -12,10 +12,6 @@ Ether is transferred to 'sender' upon successful `void`.
 """
 
 contract Escrow {
-    address[] public actors;
-    mapping (address => bool) public confirmations;
-    uint public expirationBlock;
-
     /*
         Escrow is initialized with references to three parties (addresses)
         as well as the number of blocks until expiration.
@@ -32,9 +28,7 @@ contract Escrow {
        Any of the initially specified actors can call confirm().
        Once there are enough confirmations (2) confirm releases funds to recipient.
     */
-    function confirm() {
-        require(isActor(msg.sender));
-
+    function confirm() only_actor {
         confirmations[msg.sender] = true;
         if (isConfirmed()) {
             assert(recipient().call.value(this.balance)());
@@ -45,10 +39,8 @@ contract Escrow {
         Sender can void escrow agreement after expiration.
         Voiding sends all funds held in contract back to the sender.
     */
-    function void() {
-        require(sender() == msg.sender);
+    function void() only_sender {
         assert(now > expirationBlock);
-
         assert(sender().call.value(this.balance)());
     }
 
@@ -91,4 +83,11 @@ contract Escrow {
         }
         return false;
     }
+
+    modifier only_actor { require(isActor(msg.sender)); _; }
+    modifier only_sender { require(sender() == msg.sender); _; }
+
+    address[] public actors;
+    mapping (address => bool) public confirmations;
+    uint public expirationBlock;
 }
