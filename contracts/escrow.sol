@@ -19,7 +19,7 @@ contract Escrow {
         The amount to be held in escrow can be sent upon initialization or in any transaction after.
         'timestampExpired' must be in the future.
     */
-    function Escrow(address _sender, address _recipient, address _arbitrator, uint _timestampExpired) {
+    function Escrow(address _sender, address _recipient, address _arbitrator, uint _timestampExpired) payable {
         assert(_timestampExpired > now);
 
         actors.push(_sender);

@@ -3,6 +3,7 @@ import time
 
 
 ESCROW_EXPIRATION = int(time.time()) + 10000
+ESCROW_AMOUNT = 10
 
 
 @pytest.fixture()
@@ -26,12 +27,14 @@ def escrow_arguments(accounts):
 
 
 @pytest.fixture()
-def escrow_contract(chain, accounts):
-    escrow, _ = chain.provider.get_or_deploy_contract('Escrow', {}, [], escrow_arguments(accounts))
+def escrow_contract(provider, accounts):
+    args = escrow_arguments(accounts)
+    transaction = {"value": ESCROW_AMOUNT}
+    escrow, _ = provider.get_or_deploy_contract('Escrow', transaction, deploy_kwargs=args)
     return escrow
 
 
-def test_escrow_init(escrow_contract, escrow_arguments):
+def test_escrow_init(web3, escrow_contract, escrow_arguments):
     sender = escrow_contract.call().sender()
     recipient = escrow_contract.call().recipient()
     arbitrator = escrow_contract.call().arbitrator()
@@ -41,6 +44,7 @@ def test_escrow_init(escrow_contract, escrow_arguments):
     assert recipient == escrow_arguments['_recipient']
     assert arbitrator == escrow_arguments['_arbitrator']
     assert timestampExpired == escrow_arguments['_timestampExpired']
+    assert web3.eth.getBalance(escrow_contract.address) == ESCROW_AMOUNT
 
 
 def test_is_actor(accounts, escrow_contract, escrow_actors):
@@ -101,11 +105,21 @@ def test_confirm_by_arbitrator(chain, escrow_contract, escrow_arguments):
 
 
 def test_confirm_transfer(chain, escrow_contract, escrow_arguments):
+    web3 = chain.web3
+
+    recipient = escrow_arguments['_recipient']
+    initial_balance = web3.eth.getBalance(recipient)
+    escrow_balance = web3.eth.getBalance(escrow_contract.address)
+    assert escrow_balance > 0
+
     # confirmation 1
     sender = escrow_arguments['_sender']
     transact = escrow_contract.transact({"from": sender})
     confirm_txn_hash = transact.confirm()
     chain.wait.for_receipt(confirm_txn_hash)
+
+    one_conf_balance = web3.eth.getBalance(recipient)
+    assert one_conf_balance == initial_balance
 
     # confirmation 2
     arbitrator = escrow_arguments['_arbitrator']
@@ -113,13 +127,8 @@ def test_confirm_transfer(chain, escrow_contract, escrow_arguments):
     confirm_txn_hash = transact.confirm()
     chain.wait.for_receipt(confirm_txn_hash)
 
+    after_balance = web3.eth.getBalance(recipient)
+    assert after_balance - initial_balance == escrow_balance
 
-
-# def test_custom_greeting(chain):
-    # greeter, _ = chain.provider.get_or_deploy_contract('Greeter')
-
-    # set_txn_hash = greeter.transact().setGreeting('Guten Tag')
-    # chain.wait.for_receipt(set_txn_hash)
-
-    # greeting = greeter.call().greet()
-    # assert greeting == 'Guten Tag'
+    after_escrow_balance = web3.eth.getBalance(escrow_contract.address)
+    assert after_escrow_balance == 0
