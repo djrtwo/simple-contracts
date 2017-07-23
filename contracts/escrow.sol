@@ -20,7 +20,7 @@ contract Escrow {
         'timestampExpired' must be in the future.
     */
     function Escrow(address _sender, address _recipient, address _arbitrator, uint _timestampExpired) {
-        assert(timeExpired > now);
+        assert(_timestampExpired > now);
 
         actors.push(_sender);
         actors.push(_recipient);
@@ -96,5 +96,5 @@ contract Escrow {
 
     address[] public actors;
     mapping (address => bool) public confirmations;
-    uint public expirationBlock;
+    uint public timestampExpired;
 }
