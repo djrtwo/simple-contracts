@@ -1,27 +1,31 @@
 pragma solidity ^0.4.11;
-"""
-**** Currently UNTESTED ****
 
-# Escrow Contract #
-Involves three 'actors' -- 'sender', 'recipient', 'arbitrator'
-Holds Ether from 'sender' to be transferred to 'recipient'.
-Ether in contract is transferred to 'recipient' when two of the three 'actors' `confirm`.
-Contract can be `void`ed by 'sender' after `blocksUntilExpire` blocks have passed since contract creation.
-Ether is transferred to 'sender' upon successful `void`.
+// v0.0.1
+// Author(s): Danny Ryan
 
-"""
+// **** Currently UNTESTED ****
+
+// # Escrow Contract #
+// Involves three 'actors' -- 'sender', 'recipient', 'arbitrator'
+// Holds Ether from 'sender' to be transferred to 'recipient'.
+// Ether in contract is transferred to 'recipient' when two of the three 'actors' `confirm`.
+// Contract can be `void`ed by 'sender' after `block.timestamp` is past 'timestampExpired'
+// Ether is transferred to 'sender' upon successful `void`.
 
 contract Escrow {
     /*
         Escrow is initialized with references to three parties (addresses)
         as well as the number of blocks until expiration.
         The amount to be held in escrow can be sent upon initialization or in any transaction after.
+        'timestampExpired' must be in the future.
     */
-    function Escrow(address _sender, address _recipient, address _arbitrator, uint blocksUntilExpire) {
+    function Escrow(address _sender, address _recipient, address _arbitrator, uint _timestampExpired) {
+        assert(timeExpired > now);
+
         actors.push(_sender);
         actors.push(_recipient);
         actors.push(_arbitrator);
-        expirationBlock = now + blocksUntilExpire;
+        timestampExpired = _timestampExpired;
     }
 
     /*
@@ -31,6 +35,7 @@ contract Escrow {
     function confirm() only_actor {
         confirmations[msg.sender] = true;
         if (isConfirmed()) {
+            // use call to forward gas in case complex function receives gas
             assert(recipient().call.value(this.balance)());
         }
     }
@@ -40,7 +45,9 @@ contract Escrow {
         Voiding sends all funds held in contract back to the sender.
     */
     function void() only_sender {
-        assert(now > expirationBlock);
+        assert(now > timestampExpired);
+
+        // use call to forward gas in case complex function receives gas
         assert(sender().call.value(this.balance)());
     }
 
