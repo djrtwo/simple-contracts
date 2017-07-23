@@ -1,9 +1,9 @@
 pragma solidity ^0.4.11;
 
-// v0.0.1
+// v0.0.2
 // Author(s): Danny Ryan
 
-// **** Currently UNTESTED ****
+// **** Currently not fully tested ****
 
 // # Escrow Contract #
 // Involves three 'actors' -- 'sender', 'recipient', 'arbitrator'
@@ -68,13 +68,21 @@ contract Escrow {
     }
 
     /*
+       Arbitrator of escrow contract
+       Can act as 1 of the 3 required actors for `confirm`ing
+    */
+    function arbitrator() constant returns (address) {
+        return actors[2];
+    }
+
+    /*
        Count number of confirms
        returns true if two or more
     */
     function isConfirmed() constant returns (bool) {
         uint confCount = 0;
         for (uint i = 0; i < actors.length; i++) {
-            if (confirmations[actors[0]]) {
+            if (confirmations[actors[i]]) {
                 confCount++;
             }
         }
