@@ -15,7 +15,7 @@ pragma solidity ^0.4.11;
 contract Escrow {
     /*
         Escrow is initialized with references to three parties (addresses)
-        as well as the number of blocks until expiration.
+        as well as the contract expireation timestamp
         The amount to be held in escrow can be sent upon initialization or in any transaction after.
         'timestampExpired' must be in the future.
     */
