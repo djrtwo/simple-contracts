@@ -3,7 +3,7 @@ pragma solidity ^0.4.11;
 // v0.0.2
 // Author(s): Danny Ryan
 
-// **** Currently not fully tested ****
+// Contract in Alpha. For educational purposes only
 
 // # Escrow Contract #
 // Involves three 'actors' -- 'sender', 'recipient', 'arbitrator'
