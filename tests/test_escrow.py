@@ -3,12 +3,13 @@ import time
 
 
 ESCROW_EXPIRATION = int(time.time()) + 10000
-ESCROW_AMOUNT = 10
+ESCROW_AMOUNT = 10000000 # larger than gas cost to pull it out
 
 
 @pytest.fixture()
 def escrow_actors(accounts):
-    return accounts[0:3]
+    # start at one so coinbase doesn't interfere with balances
+    return accounts[1:4]
 
 
 @pytest.fixture()
@@ -19,9 +20,9 @@ def escrow_expiration():
 @pytest.fixture()
 def escrow_arguments(accounts):
     return {
-        '_sender': accounts[0],
-        '_recipient': accounts[1],
-        '_arbitrator': accounts[2],
+        '_sender': accounts[1],
+        '_recipient': accounts[2],
+        '_arbitrator': accounts[3],
         '_timestampExpired': escrow_expiration(),
     }
 
@@ -29,6 +30,17 @@ def escrow_arguments(accounts):
 @pytest.fixture()
 def escrow_contract(provider, accounts):
     args = escrow_arguments(accounts)
+    transaction = {"value": ESCROW_AMOUNT}
+    escrow, _ = provider.get_or_deploy_contract('Escrow', transaction, deploy_kwargs=args)
+    return escrow
+
+
+@pytest.fixture()
+def expired_escrow_contract(web3, provider, accounts):
+    args = escrow_arguments(accounts)
+    # a bit hacky -- timestamp of blocks seems disconnected from computer timestamp..
+    args['_timestampExpired'] = int(web3.eth.getBlock('latest')['timestamp']) + 12
+
     transaction = {"value": ESCROW_AMOUNT}
     escrow, _ = provider.get_or_deploy_contract('Escrow', transaction, deploy_kwargs=args)
     return escrow
@@ -132,3 +144,48 @@ def test_confirm_transfer(chain, escrow_contract, escrow_arguments):
 
     after_escrow_balance = web3.eth.getBalance(escrow_contract.address)
     assert after_escrow_balance == 0
+
+
+def test_void_by_sender(chain, expired_escrow_contract):
+    web3 = chain.web3
+
+    sender = expired_escrow_contract.call().sender()
+    initial_balance = web3.eth.getBalance(sender)
+
+    initial_escrow_balance = web3.eth.getBalance(expired_escrow_contract.address)
+    assert initial_escrow_balance > 0
+
+    void_txn_hash = expired_escrow_contract.transact({"from": sender}).void()
+    chain.wait.for_receipt(void_txn_hash)
+
+    final_balance = web3.eth.getBalance(sender)
+    final_escrow_balance = web3.eth.getBalance(expired_escrow_contract.address)
+
+    assert final_escrow_balance == 0
+    # assume fees to pull out escrow cost less than a 10th of escrow amount
+    assert final_balance - initial_balance > ESCROW_AMOUNT - (ESCROW_AMOUNT / 10)
+
+
+def test_void_not_expired(escrow_contract):
+    sender = escrow_contract.call().sender()
+
+    with pytest.raises(Exception):
+        # raises TransactionFailed
+        # is specific class only in ethereum/tester.pytest
+        # so test only looks for Exception
+        escrow_contract.transact({"from": sender}).void()
+
+
+def test_void_by_non_sender(accounts, expired_escrow_contract):
+    recipient = expired_escrow_contract.call().recipient()
+    arbitrator = expired_escrow_contract.call().arbitrator()
+    non_actor = accounts[-1]
+
+    test_cannot_void = [recipient, arbitrator, non_actor]
+    for account in test_cannot_void:
+        with pytest.raises(Exception):
+            # raises TransactionFailed
+            # is specific class only in ethereum/tester.pytest
+            # so test only looks for Exception
+            expired_escrow_contract.transact({"from": account}).void()
+
