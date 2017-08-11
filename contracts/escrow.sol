@@ -90,7 +90,7 @@ contract Escrow {
     }
 
     /*
-       returns true if address is either the sender, recipient, or artibtrator
+       returns true if address is either the sender, recipient, or arbitrator
     */
     function isActor(address addr) constant returns (bool) {
         for (uint i = 0; i < actors.length; i++) {
